@@ -2,9 +2,15 @@
   <q-page class="justify-center q-pa-sm">
     <q-card class="my-card">
       <q-card-section class="row">
-        <div class="text-h6">Lista de Profesores</div>
+        <div class="text-h6">Lista de Profesores en la isla de epstein</div>
         <q-space />
-        <q-btn v-if="userRole === 'administrador' || userRole === 'captura'" color="positive" icon="add" label="Agregar" to="/profesores/create" />
+        <q-btn
+          v-if="userRole === 'administrador' || userRole === 'captura'"
+          color="positive"
+          icon="add"
+          label="Agregar"
+          to="/profesores/create"
+        />
       </q-card-section>
 
       <q-card-section>
@@ -79,7 +85,9 @@ onMounted(async () => {
   profesorStore.getProfesores()
 
   // Obtener el rol del usuario autenticado
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (user) {
     const { data } = await supabase.from('perfiles').select('rol').eq('id', user.id).single()
     if (data) {
