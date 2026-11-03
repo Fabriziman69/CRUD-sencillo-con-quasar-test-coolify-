@@ -4,6 +4,7 @@ node_modules
 
 # .env files
 .env*
+!.env.example
 
 # Quasar core related directories
 .quasar
@@ -24,3 +25,9 @@ node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Archivos temporales de verificación del informe
+docs/qa/render-*/
+docs/qa/template-reference-render/
+docs/qa/*.log
+firebase-debug.log*

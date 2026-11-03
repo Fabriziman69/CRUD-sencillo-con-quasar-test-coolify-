@@ -11,7 +11,7 @@ export default defineConfig((/* ctx */) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: [],
+    boot: ['firebase'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['app.scss'],
@@ -49,7 +49,13 @@ export default defineConfig((/* ctx */) => {
       // minify: false,
       // distDir
 
-      // extendViteConf (viteConf) {},
+      extendViteConf(viteConf) {
+        viteConf.server ??= {}
+        viteConf.server.watch = {
+          ...viteConf.server.watch,
+          ignored: ['**/docs/**', '**/*.tmp'],
+        }
+      },
       // viteVuePluginOptions: {},
 
       // to write components with JSX/TSX:

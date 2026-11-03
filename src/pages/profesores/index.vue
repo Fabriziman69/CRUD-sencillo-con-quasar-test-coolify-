@@ -2,7 +2,7 @@
   <q-page class="justify-center q-pa-sm">
     <q-card class="my-card">
       <q-card-section class="row">
-        <div class="text-h6">Lista de Profesores en la isla de epstein</div>
+        <div class="text-h6">Lista de Profesores</div>
         <q-space />
         <q-btn
           v-if="userRole === 'administrador' || userRole === 'captura'"
@@ -14,7 +14,16 @@
       </q-card-section>
 
       <q-card-section>
-        <q-table :rows="profesorStore.profesores" :columns="columns" row-key="name">
+        <q-banner v-if="profesorStore.error" class="bg-red-1 text-negative q-mb-md" role="alert">
+          {{ profesorStore.error }}
+        </q-banner>
+        <q-table
+          :rows="profesorStore.profesores"
+          :columns="columns"
+          row-key="profesor_id"
+          :loading="profesorStore.loading"
+          no-data-label="No hay profesores registrados"
+        >
           <template v-slot:body-cell-acciones="props">
             <q-td key="acciones" :props="props">
               <q-btn-group flat>
@@ -46,25 +55,34 @@
     <q-dialog v-model="confirm" persistent>
       <q-card>
         <q-card-section class="row items-center">
-          <q-avatar icon="danger" color="negative" text-color="white" />
+          <q-avatar icon="warning" color="negative" text-color="white" />
           <span class="q-ml-sm">¡Alerta! Eliminar <q-chip square :label="deleteItem" /></span>
         </q-card-section>
         <q-card-section>
-          Para eliminar el rigistro favor de ingresar
+          Para eliminar el registro, ingresa
           <q-chip square :label="deleteCode" />
-          para confiramar.
+          para confirmar.
         </q-card-section>
         <q-card-section>
-          <q-input v-model="validateCode" type="text" label="" />
+          <q-input v-model="validateCode" type="text" label="Código de confirmación" />
+          <q-banner v-if="profesorStore.error" class="bg-red-1 text-negative q-mt-md" role="alert">
+            {{ profesorStore.error }}
+          </q-banner>
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn flat label="Cancel" color="primary" v-close-popup />
           <q-btn
-            :disable="validateCode != deleteCode"
+            flat
+            label="Cancelar"
+            color="primary"
+            :disable="profesorStore.saving"
+            v-close-popup
+          />
+          <q-btn
+            :disable="validateCode !== deleteCode"
             label="Eliminar"
             color="negative"
-            @click="profesorStore.deleteProfesor"
-            v-close-popup
+            :loading="profesorStore.saving"
+            @click="confirmDelete"
           />
         </q-card-actions>
       </q-card>
@@ -73,27 +91,15 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useProfesorStore } from '@/stores/profesoreStore'
-import { ref } from 'vue'
-import { supabase } from '@/boot/supabase'
-
+import { useAuthStore } from '@/stores/authStore'
 const profesorStore = useProfesorStore()
-const userRole = ref('')
+const { userRole } = storeToRefs(useAuthStore())
 
 onMounted(async () => {
-  profesorStore.getProfesores()
-
-  // Obtener el rol del usuario autenticado
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-  if (user) {
-    const { data } = await supabase.from('perfiles').select('rol').eq('id', user.id).single()
-    if (data) {
-      userRole.value = data.rol
-    }
-  }
+  await profesorStore.getProfesores()
 })
 
 const columns = [
@@ -165,8 +171,16 @@ const validateCode = ref('')
 const confirm = ref(false)
 function setDelete(profesor) {
   deleteItem.value = profesor.nombre
-  deleteCode.value = profesor.profesor_id
+  deleteCode.value = String(profesor.profesor_id)
+  validateCode.value = ''
+  profesorStore.error = ''
   confirm.value = true
   profesorStore.profesorForm = Object.assign({}, profesor)
+}
+
+async function confirmDelete() {
+  if (await profesorStore.deleteProfesor()) {
+    confirm.value = false
+  }
 }
 </script>

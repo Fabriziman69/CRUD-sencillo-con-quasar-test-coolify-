@@ -1,0 +1,82 @@
+{
+  "final": true,
+  "fecha": "1 de noviembre de 2026",
+  "resumen": "Se completaron los CRUD de alumnos, materias, inscripciones y calificaciones, y se publicaron sus reglas en Firebase. Se probaron creación, consulta, edición y eliminación desde las cuatro páginas nuevas con una cuenta administradora. Las modificaciones y las bajas se comprobaron después de recargar.",
+  "pruebas": [
+    [
+      "Alumnos",
+      "Aprobado",
+      "Aprobado",
+      "Aprobado",
+      "Aprobado"
+    ],
+    [
+      "Materias",
+      "Aprobado",
+      "Aprobado",
+      "Aprobado",
+      "Aprobado"
+    ],
+    [
+      "Inscripciones",
+      "Aprobado",
+      "Aprobado",
+      "Aprobado",
+      "Aprobado"
+    ],
+    [
+      "Calificaciones",
+      "Aprobado",
+      "Aprobado",
+      "Aprobado",
+      "Aprobado"
+    ]
+  ],
+  "capturas": [
+    {
+      "descripcion": "Izquierda: formulario con los datos editados recuperados de Firebase. Derecha: lista vacía después de eliminar el registro y recargar la página.",
+      "baja": "docs/evidencias/alumnos-eliminados.png",
+      "ruta": "docs/evidencias/alumnos.png",
+      "titulo": "Alumnos"
+    },
+    {
+      "descripcion": "Lista de materias vacía después de eliminar el registro temporal y recargar la página. Durante la prueba se cambió el número de unidades de 3 a 4; el resultado se registra en la matriz de pruebas.",
+      "baja": "docs/evidencias/materias-eliminados.png",
+      "ruta": "",
+      "titulo": "Materias"
+    },
+    {
+      "descripcion": "Izquierda: formulario con los datos editados recuperados de Firebase. Derecha: lista vacía después de eliminar el registro y recargar la página.",
+      "baja": "docs/evidencias/inscripciones-eliminados.png",
+      "ruta": "docs/evidencias/inscripciones.png",
+      "titulo": "Inscripciones"
+    },
+    {
+      "descripcion": "Izquierda: formulario con los datos editados recuperados de Firebase. Derecha: lista vacía después de eliminar el registro y recargar la página.",
+      "baja": "docs/evidencias/calificaciones-eliminadas.png",
+      "ruta": "docs/evidencias/calificaciones.png",
+      "titulo": "Calificaciones"
+    }
+  ],
+  "validaciones": [
+    "Alumnos: nombre de hasta 100 caracteres, apellidos de hasta 150 y matrícula de hasta 20; la fecha de nacimiento es opcional y no puede ser futura.",
+    "Materias: profesor existente, nombre de hasta 200 caracteres y unidades enteras de 1 a 20.",
+    "Inscripciones: alumno y materia existentes, y periodo de hasta 50 caracteres.",
+    "Calificaciones: nota de 0 a 10, parcial entero de 1 a 3 y alumno derivado de la inscripción."
+  ],
+  "verificaciones": [
+    "Compilación de producción: aprobada mediante npm run build.",
+    "Validación de modelos: 47 pruebas aprobadas mediante node --test tests/collectionSchemas.test.mjs.",
+    "ESLint, formato Prettier de código fuente y git diff --check: aprobados.",
+    "Se verificó la presencia de index.vue, create.vue y edit_[id].vue en las cuatro carpetas nuevas.",
+    "Reglas de Firestore publicadas en curcert-8fdb0 y acceso autenticado comprobado.",
+    "Seis pruebas remotas aprobadas: Firestore negó la lectura anónima de las cinco colecciones académicas y perfiles.",
+    "Matrícula repetida rechazada desde la página de alta, sin crear un segundo alumno."
+  ],
+  "observaciones": [
+    "Se utilizaron registros ficticios identificados como Prueba U2. El alumno cambió a Alumno editado; las unidades de la materia pasaron de 3 a 4; el periodo cambió a Prueba 2026 editada; la calificación pasó de 8 a 9.5. Todos los cambios persistieron tras recargar.",
+    "Al finalizar se eliminaron los cuatro registros relacionados y el profesor temporal. Se comprobó la ausencia de los datos de prueba y se conservó el profesor preexistente.",
+    "Los controles de duplicados y dependencias son preventivos del cliente, sin garantía transaccional ante concurrencia o clientes alternativos. Las reglas validan roles, tipos, rangos y referencias. El calendario completo y las fechas futuras se validan en cliente."
+  ],
+  "conclusion": "La actividad quedó completada con los cuatro CRUD faltantes, sus páginas, stores y reglas de acceso. Las pruebas desde la plataforma confirmaron el alta, la consulta, la edición persistente y la eliminación en cada módulo nuevo. También se aprobaron 47 pruebas de validación y seis comprobaciones de denegación de acceso anónimo. Los datos ficticios se retiraron al concluir."
+}

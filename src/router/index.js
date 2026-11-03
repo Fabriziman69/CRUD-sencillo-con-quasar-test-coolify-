@@ -1,5 +1,6 @@
 import { defineRouter } from '#q-app'
 import { routes, handleHotUpdate } from 'vue-router/auto-routes'
+import { useAuthStore } from '@/stores/authStore'
 import {
   createMemoryHistory,
   createRouter,
@@ -31,6 +32,21 @@ export default defineRouter((/* { store, ssrContext } */) => {
     // quasar.conf.js -> build -> vueRouterMode
     // quasar.conf.js -> build -> publicPath
     history: createHistory(import.meta.env.QUASAR_VUE_ROUTER_BASE),
+  })
+
+  Router.beforeEach(async (to) => {
+    const authStore = useAuthStore()
+    await authStore.initialize()
+    const modulePath = to.path.toLowerCase().split('/')[1]
+    if (
+      ['profesores', 'alumnos', 'materias', 'inscripciones', 'calificaciones'].includes(modulePath)
+    ) {
+      if (!authStore.user) return { path: '/login', query: { redirect: to.fullPath } }
+      if (!authStore.canRead) return '/acceso'
+      if (to.path.replace(/\/$/, '') !== `/${modulePath}` && !authStore.canCapture)
+        return `/${modulePath}`
+    }
+    if (to.path === '/acceso' && !authStore.user) return '/login'
   })
 
   // enable HMR for it

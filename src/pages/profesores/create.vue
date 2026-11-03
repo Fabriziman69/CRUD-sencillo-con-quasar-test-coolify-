@@ -1,9 +1,15 @@
 <template>
   <q-page class="justify-center q-pa-sm">
     <q-card class="my-card">
-      <img src="https://cdn.quasar.dev/img/mountains.jpg" />
+      <q-card-section>
+        <div class="text-h6">Crear Profesor</div>
+      </q-card-section>
+      <q-banner v-if="profesorStore.error" class="bg-red-1 text-negative q-ma-md" role="alert">
+        {{ profesorStore.error }}
+      </q-banner>
+
       <q-form
-        @submit="profesorStore.onSubmiteditProfesor"
+        @submit="profesorStore.onSubmitNewProfesor"
         @reset="profesorStore.onReset"
         class="q-gutter-md"
       >
@@ -12,7 +18,8 @@
             <div class="col-6">
               <q-input
                 v-model="profesorStore.profesorForm.nombre"
-                :rules="[(val) => !!val || 'El nombre es requerido']"
+                maxlength="200"
+                :rules="[(val) => !!val?.trim() || 'El nombre es requerido']"
                 outlined
                 label="Nombre"
               />
@@ -20,7 +27,8 @@
             <div class="col-6">
               <q-input
                 v-model="profesorStore.profesorForm.apellidos"
-                :rules="[(val) => !!val || 'Los apellidos es requerido']"
+                maxlength="200"
+                :rules="[(val) => !!val?.trim() || 'Los apellidos es requerido']"
                 outlined
                 label="Apellidos"
               />
@@ -30,7 +38,8 @@
             <div class="col-6">
               <q-input
                 v-model="profesorStore.profesorForm.cedula"
-                :rules="[(val) => !!val || 'La cedula es requerida']"
+                maxlength="100"
+                :rules="[(val) => !!val?.trim() || 'La cedula es requerida']"
                 type="text"
                 outlined
                 label="Cédula"
@@ -39,7 +48,8 @@
             <div class="col-6">
               <q-input
                 v-model="profesorStore.profesorForm.especialidad"
-                :rules="[(val) => !!val || 'La especialidad es requerida']"
+                maxlength="200"
+                :rules="[(val) => !!val?.trim() || 'La especialidad es requerida']"
                 outlined
                 label="Especialidad"
               />
@@ -49,7 +59,8 @@
             <div class="col-12">
               <q-input
                 v-model="profesorStore.profesorForm.correo"
-                :rules="[(val) => !!val || 'El correo es requerido']"
+                maxlength="320"
+                :rules="[(val) => !!val?.trim() || 'El correo es requerido']"
                 type="email"
                 outlined
                 label="Correo electrónico"
@@ -58,27 +69,28 @@
           </div>
         </q-card-section>
 
-        <div>
-          <q-btn label="Submit" type="submit" color="primary" />
-          <q-btn label="Reset" type="reset" color="primary" flat class="q-ml-sm" />
-        </div>
+        <q-card-actions vertical align="center">
+          <q-btn label="Guardar" type="submit" color="primary" :loading="profesorStore.saving" />
+          <q-btn
+            label="Limpiar"
+            type="reset"
+            color="primary"
+            flat
+            :disable="profesorStore.saving"
+          />
+          <q-btn label="Cancelar" to="/profesores" flat :disable="profesorStore.saving" />
+        </q-card-actions>
       </q-form>
     </q-card>
   </q-page>
-  <div></div>
 </template>
 
 <script setup>
-import { useProfesorStore } from '@/stores/profesoreStore'
-import { useRoute } from 'vue-router'
 import { onMounted } from 'vue'
+import { useProfesorStore } from '@/stores/profesoreStore'
 const profesorStore = useProfesorStore()
-const route = useRoute()
 
 onMounted(() => {
-  const id = route.params.id
-  profesorStore.getProfesoresByID(id)
+  profesorStore.onReset()
 })
 </script>
-
-<style lang="scss" scoped></style>

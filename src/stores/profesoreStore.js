@@ -1,12 +1,29 @@
 import { defineStore, acceptHMRUpdate } from 'pinia'
 import { ref } from 'vue'
-import { supabase } from '@/boot/supabase'
 import { useRouter } from 'vue-router'
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  getDoc,
+  getDocs,
+  limit,
+  query,
+  updateDoc,
+  where,
+} from 'firebase/firestore'
+import { firebasedb } from '@/boot/firebase'
+import { useAuthStore } from '@/stores/authStore'
+import { firebaseErrorMessage } from '@/utils/firebaseErrors'
 
 export const useProfesorStore = defineStore('profesorStore', () => {
   const router = useRouter()
-  //STATE
   const profesores = ref([])
+  const loading = ref(false)
+  const saving = ref(false)
+  const error = ref('')
+  const authStore = useAuthStore()
 
   const profesorForBase = {
     nombre: '',
@@ -15,79 +32,142 @@ export const useProfesorStore = defineStore('profesorStore', () => {
     especialidad: '',
     correo: '',
   }
-
   const profesorForm = ref({ ...profesorForBase })
 
-  //ACTIONS
   async function getProfesores() {
-    const { data, error } = await supabase.from('profesor').select()
-    if (error) {
-      console.log(error)
-      return
+    loading.value = true
+    error.value = ''
+    try {
+      const data = await getDocs(collection(firebasedb, 'profesores'))
+      profesores.value = data.docs
+        .filter((profesor) => Object.keys(profesorForBase).some((key) => key in profesor.data()))
+        .map((profesor) => ({
+          ...profesorForBase,
+          ...profesor.data(),
+          profesor_id: profesor.id,
+        }))
+      return true
+    } catch (cause) {
+      profesores.value = []
+      error.value = firebaseErrorMessage(cause)
+      return false
+    } finally {
+      loading.value = false
     }
-    profesorForm.value = Object.assign({}, profesorForBase)
-    profesores.value = data
-    router.push('/profesores')
   }
 
   async function getProfesoresByID(id) {
-    const { data, error } = await supabase.from('profesor').select().eq('profesor_id', id)
-
-    if (error) {
-      console.log(error)
-      return
+    onReset()
+    loading.value = true
+    error.value = ''
+    try {
+      const data = await getDoc(doc(firebasedb, 'profesores', String(id)))
+      if (!data.exists()) {
+        error.value = 'El profesor no existe o fue eliminado.'
+        return false
+      }
+      profesorForm.value = { ...profesorForBase, ...data.data(), profesor_id: data.id }
+      return true
+    } catch (cause) {
+      error.value = firebaseErrorMessage(cause)
+      return false
+    } finally {
+      loading.value = false
     }
-    profesores.value = data
+  }
+
+  function profesorData() {
+    return Object.fromEntries(
+      Object.keys(profesorForBase).map((key) => [
+        key,
+        String(profesorForm.value[key] ?? '').trim(),
+      ]),
+    )
   }
 
   async function onSubmiteditProfesor() {
-    const { error } = await supabase
-      .from('profesor')
-      .update(profesorForm.value)
-      .eq('profesor_id', profesorForm.value.profesor_id)
-      .select()
-
-    if (error) {
-      console.log(error)
-      return
+    if (saving.value) return false
+    if (!authStore.canCapture || !profesorForm.value.profesor_id) {
+      error.value = 'No puedes editar este profesor.'
+      return false
     }
-    await getProfesores()
-    onReset()
+    saving.value = true
+    error.value = ''
+    try {
+      await updateDoc(doc(firebasedb, 'profesores', profesorForm.value.profesor_id), profesorData())
+      onReset()
+      await router.push('/profesores')
+      return true
+    } catch (cause) {
+      error.value = firebaseErrorMessage(cause)
+      return false
+    } finally {
+      saving.value = false
+    }
   }
 
   async function onSubmitNewProfesor() {
-    const { error } = await supabase.from('profesor').insert(profesorForm.value)
-
-    if (error) {
-      console.log(error)
-      return
+    if (saving.value) return false
+    if (!authStore.canCapture) {
+      error.value = 'Tu cuenta no tiene permiso para agregar profesores.'
+      return false
     }
-    await getProfesores()
-    onReset()
+    saving.value = true
+    error.value = ''
+    try {
+      await addDoc(collection(firebasedb, 'profesores'), profesorData())
+      onReset()
+      await router.push('/profesores')
+      return true
+    } catch (cause) {
+      error.value = firebaseErrorMessage(cause)
+      return false
+    } finally {
+      saving.value = false
+    }
   }
 
   async function deleteProfesor() {
-    const { error } = await supabase
-      .from('profesor')
-      .delete()
-      .eq('profesor_id', profesorForm.value.profesor_id)
-    if (error == null) {
-      profesores.value = profesores.value.filter(
-        (v) => v.profesor_id != profesorForm.value.profesor_id,
+    if (saving.value) return false
+    if (!authStore.isAdmin || !profesorForm.value.profesor_id) {
+      error.value = 'Solo un administrador puede eliminar profesores.'
+      return false
+    }
+    saving.value = true
+    error.value = ''
+    try {
+      const id = profesorForm.value.profesor_id
+      const materias = await getDocs(
+        query(collection(firebasedb, 'materias'), where('profesor_id', '==', id), limit(1)),
       )
-      profesorForm.value = Object.assign({}, profesorForm)
-      router.push('/profesores')
+      if (!materias.empty) {
+        error.value =
+          'No puedes eliminar este profesor porque tiene materias relacionadas. Elimina primero sus materias.'
+        return false
+      }
+      await deleteDoc(doc(firebasedb, 'profesores', id))
+      profesores.value = profesores.value.filter((profesor) => profesor.profesor_id !== id)
+      onReset()
+      return true
+    } catch (cause) {
+      error.value = firebaseErrorMessage(cause)
+      return false
+    } finally {
+      saving.value = false
     }
   }
 
   function onReset() {
     profesorForm.value = { ...profesorForBase }
+    error.value = ''
   }
 
-  //RETURN
   return {
     profesores,
     profesorForm,
+    loading,
+    saving,
+    error,
     getProfesores,
     getProfesoresByID,
     onSubmitNewProfesor,

@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function hasRole(roles) {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/perfiles/$(request.auth.uid))
+        && get(/databases/$(database)/documents/perfiles/$(request.auth.uid)).data.rol in roles;
+    }
+
+    function validProfesor(data) {
+      return data.keys().hasAll(['nombre', 'apellidos', 'cedula', 'especialidad', 'correo'])
+        && data.nombre is string && data.nombre.size() > 0 && data.nombre.size() <= 200
+        && data.apellidos is string && data.apellidos.size() > 0 && data.apellidos.size() <= 200
+        && data.cedula is string && data.cedula.size() > 0 && data.cedula.size() <= 100
+        && data.especialidad is string && data.especialidad.size() > 0 && data.especialidad.size() <= 200
+        && data.correo is string && data.correo.size() > 0 && data.correo.size() <= 320;
+    }
+
+    function validText(value, maximum) {
+      return value is string && value.size() > 0 && value.size() <= maximum
+        && value.matches('.*[^\\s].*');
+    }
+
+    function validId(value) {
+      return value is string && value.size() > 0 && value.size() <= 1500
+        && !value.matches('.*/.*');
+    }
+
+    function validAlumno(data) {
+      return data.keys().hasAll(['nombre', 'apellidos', 'matricula', 'fecha_nacimiento', 'genero'])
+        && data.keys().hasOnly(['nombre', 'apellidos', 'matricula', 'fecha_nacimiento', 'genero'])
+        && validText(data.nombre, 100)
+        && validText(data.apellidos, 150)
+        && validText(data.matricula, 20)
+        && data.fecha_nacimiento is string
+        && (data.fecha_nacimiento == '' || data.fecha_nacimiento.matches('[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])'))
+        && data.genero is string && data.genero.size() <= 20;
+    }
+
+    function validMateria(data) {
+      return data.keys().hasAll(['profesor_id', 'nombre', 'unidades'])
+        && data.keys().hasOnly(['profesor_id', 'nombre', 'unidades'])
+        && validId(data.profesor_id)
+        && exists(/databases/$(database)/documents/profesores/$(data.profesor_id))
+        && validProfesor(get(/databases/$(database)/documents/profesores/$(data.profesor_id)).data)
+        && validText(data.nombre, 200)
+        && data.unidades is int && data.unidades >= 1 && data.unidades <= 20;
+    }
+
+    function validInscripcion(data) {
+      return data.keys().hasAll(['alumno_id', 'materia_id', 'periodo'])
+        && data.keys().hasOnly(['alumno_id', 'materia_id', 'periodo'])
+        && validId(data.alumno_id) && validId(data.materia_id)
+        && exists(/databases/$(database)/documents/alumnos/$(data.alumno_id))
+        && exists(/databases/$(database)/documents/materias/$(data.materia_id))
+        && validText(data.periodo, 50);
+    }
+
+    function validCalificacion(data) {
+      return data.keys().hasAll(['alumno_id', 'inscripcion_id', 'calificacion', 'parcial'])
+        && data.keys().hasOnly(['alumno_id', 'inscripcion_id', 'calificacion', 'parcial'])
+        && validId(data.alumno_id) && validId(data.inscripcion_id)
+        && exists(/databases/$(database)/documents/alumnos/$(data.alumno_id))
+        && exists(/databases/$(database)/documents/inscripciones/$(data.inscripcion_id))
+        && get(/databases/$(database)/documents/inscripciones/$(data.inscripcion_id)).data.alumno_id == data.alumno_id
+        && data.calificacion is number && data.calificacion >= 0 && data.calificacion <= 10
+        && data.parcial is int && data.parcial >= 1 && data.parcial <= 3;
+    }
+
+    match /profesores/{profesorId} {
+      allow read: if hasRole(['administrador', 'captura', 'consulta']);
+      allow create: if hasRole(['administrador', 'captura'])
+        && request.resource.data.keys().hasOnly(['nombre', 'apellidos', 'cedula', 'especialidad', 'correo'])
+        && validProfesor(request.resource.data);
+      allow update: if hasRole(['administrador', 'captura'])
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['nombre', 'apellidos', 'cedula', 'especialidad', 'correo'])
+        && validProfesor(request.resource.data);
+      allow delete: if hasRole(['administrador']);
+    }
+
+    match /alumnos/{alumnoId} {
+      allow read: if hasRole(['administrador', 'captura', 'consulta']);
+      allow create, update: if hasRole(['administrador', 'captura'])
+        && validAlumno(request.resource.data);
+      allow delete: if hasRole(['administrador']);
+    }
+
+    match /materias/{materiaId} {
+      allow read: if hasRole(['administrador', 'captura', 'consulta']);
+      allow create, update: if hasRole(['administrador', 'captura'])
+        && validMateria(request.resource.data);
+      allow delete: if hasRole(['administrador']);
+    }
+
+    match /inscripciones/{inscripcionId} {
+      allow read: if hasRole(['administrador', 'captura', 'consulta']);
+      allow create, update: if hasRole(['administrador', 'captura'])
+        && validInscripcion(request.resource.data);
+      allow delete: if hasRole(['administrador']);
+    }
+
+    match /calificaciones/{calificacionId} {
+      allow read: if hasRole(['administrador', 'captura', 'consulta']);
+      allow create, update: if hasRole(['administrador', 'captura'])
+        && validCalificacion(request.resource.data);
+      allow delete: if hasRole(['administrador']);
+    }
+
+    match /perfiles/{uid} {
+      allow get: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['rol'])
+        && request.resource.data.rol == 'pendiente';
+      // Los roles se asignan desde la consola de Firebase, nunca desde el cliente.
+      allow list, update, delete: if false;
+    }
+  }
+}
